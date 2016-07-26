@@ -1,10 +1,19 @@
 package com.ndroidpro.alephtest;
 
+import android.content.Context;
 import android.os.Bundle;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.TextView;
 
 
 // http://stackoverflow.com/questions/19845059/slide-in-while-fade-in-a-textview
@@ -15,13 +24,96 @@ import android.view.animation.AnimationUtils;
 // important
 //http://stackoverflow.com/questions/35919060/animating-display-of-items-in-listview-in-android
 
+/**
+ * Created by Nikhil Vashistha on 25-07-2016 for AlephTest.
+ */
 public class MainActivity extends AppCompatActivity {
+
+    private SwipeRefreshLayout swipeContainer;
+    private ListView list;
+    private ArrayAdapter<String> listAdapter;
+    private int i;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        swipeContainer = (SwipeRefreshLayout) findViewById(R.id.swipeContainer);
+
+        list = (ListView)findViewById(R.id.lvItems);
+
+        // Creating the list adapter and populating the list
+        listAdapter = new CustomListAdapter(this, R.layout.list_item);
+
+        // loop for adding data in list
+        for ( i=0; i<2;i++) {
+            listAdapter.add("Aleph Test " + i);
+        }
+        list.setAdapter(listAdapter);
+
+
+        swipeContainer.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                // Refresh items
+                refreshItems();
+            }
+        });
+
+        // Creating an item click listener, to open/close our Detail Screen for each item
+        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            public void onItemClick(AdapterView<?> parent, final View view, int position, long id) {
+
+                View detailScreen = view.findViewById(R.id.detail_screen);
+
+                // Creating the expand animation for the item
+                ExpandAnimation expandAni = new ExpandAnimation(detailScreen, 500);
+
+                // Start the animation for the Detail Screen
+                detailScreen.startAnimation(expandAni);
+
+                showBackButton();
+            }
+        });
+
     }
+
+    private void showBackButton() {
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        switch (item.getItemId()){
+            case android.R.id.home :
+                this.finish();
+
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    void refreshItems() {
+        // Load items
+        listAdapter.add("Aleph Test"+i);
+        i++;
+        // Load complete
+        onItemsLoadComplete();
+    }
+
+    void onItemsLoadComplete() {
+        // Update the adapter and notify data set changed
+        list.setAdapter(listAdapter);
+        listAdapter.notifyDataSetChanged();
+        list.startLayoutAnimation();
+
+        // Stop refresh animation
+        swipeContainer.setRefreshing(false);
+    }
+
 
     private void fadeOutView(View view) {
         Animation fadeOut = AnimationUtils.loadAnimation(view.getContext(), R.anim.fade_out);
@@ -120,5 +212,29 @@ public class MainActivity extends AppCompatActivity {
 
         protected abstract void onAnimationStart(View view, Animation animation);
         protected abstract void onAnimationEnd(View view, Animation animation);
+    }
+
+    class CustomListAdapter extends ArrayAdapter<String> {
+
+        public CustomListAdapter(Context context, int textViewResourceId) {
+            super(context, textViewResourceId);
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+
+            if (convertView == null) {
+                convertView = getLayoutInflater().inflate(R.layout.list_item, null);
+            }
+
+            ((TextView)convertView.findViewById(R.id.title)).setText(getItem(position));
+
+            // Resets the Detail screen to be closed
+            View detailScreen = convertView.findViewById(R.id.detail_screen);
+            ((LinearLayout.LayoutParams) detailScreen.getLayoutParams()).bottomMargin = -150;
+            detailScreen.setVisibility(View.GONE);
+
+            return convertView;
+        }
     }
 }
